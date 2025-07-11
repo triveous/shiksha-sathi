@@ -223,8 +223,8 @@ root_agent = Agent(
     model=model,
     name="recap_agent",
     instruction=system_prompt,
-    before_model_callback=guard_input,
-    after_model_callback=guard_output,
+    # before_model_callback=guard_input,
+    # after_model_callback=guard_output,
     generate_content_config=gen_cfg
 )
 
