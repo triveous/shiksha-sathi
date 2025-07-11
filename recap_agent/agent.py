@@ -24,7 +24,7 @@ from google.adk.tools import load_memory
 from google.genai.types import Content, Part, GenerateContentConfig
 from google.oauth2 import service_account
 from google.genai import types as gen_types  
-from .guardrail_helper import guard_input, guard_output
+# from .guardrail_helper import guard_input, guard_output
 from google.adk.sessions import VertexAiSessionService
 
 
