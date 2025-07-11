@@ -1,8 +1,0 @@
-google-adk==1.4.1
-python-dotenv==1.1.0
-gspread>=6.0.0
-google-auth>=2.30.0
-google-generativeai>=0.4.0
-python-dotenv>=1.0.1
-apscheduler>=3.10.4
-guardrails-ai>=0.4.0 

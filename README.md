@@ -1,1 +1,0 @@
-adk deploy cloud_run --project=%GOOGLE_CLOUD_PROJECT% --region=%GOOGLE_CLOUD_LOCATION% --service_name=recap-agent-service --app_name=recap-agent-app --with_ui recap_agent
