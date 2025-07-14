@@ -5,6 +5,13 @@ description = "Shiksha Sathi"
 license = "Apache License 2.0"
 readme = "README.md"
 
+[tool.poetry.group.deployment]
+optional = true
+
+[tool.poetry.group.deployment.dependencies]
+absl-py = "^2.2.1"
+
+
 [tool.poetry.dependencies]
 python = "^3.13"
 pydantic-settings = "^2.8.1"
