@@ -1,16 +1,30 @@
 from google.adk.agents import Agent
 from google.genai import types as gen_types
+import os
+import base64
+import json
+from google.oauth2 import service_account
+from google.oauth2.service_account import Credentials
+from google.genai.types import GenerateContentConfig
+from google.auth.transport.requests import Request
+import gspread
+from google.auth import default
+from datetime import datetime, timedelta
+
+
 
 APP_NAME = "ai_teaching_assistant"
 MODEL_NAME = "gemini-2.5-pro"
 AGENT_NAME = "recap_agent"
 
+GOOGLE_SHEET_ID = os.getenv("GOOGLE_SHEET_ID")
+COURSE_SHEET = os.getenv("COURSE_PLAN_SHEET_NAME", "Course Plan")
 
-def generate_root_agent_instruction(subject: str, klass: str, teacher: str, topic: str):
-    return f"""
-        You are a school *{subject}* educator for a classroom. Design an Universal design 
-        learning topic recap for class *{klass}* student explaining the *{topic}*
-        which has been taught by *{teacher}* in the class. Tailer the lession for an 
+
+root_agent_instruction="""
+        You are a school educator for a classroom. Design an Universal design 
+        learning topic recap for  student explaining the topic
+        which has been taught by teacher in the class. Tailer the lession for an 
         inquiry based science class and include an engaging real world analogy. 
         You can make the learning visual wherever relevant to explain the topic. 
         You should ensure that you are grounded in curriculum. Answers questions *only* about today’s
@@ -29,6 +43,8 @@ def generate_root_agent_instruction(subject: str, klass: str, teacher: str, topi
 
 
         ✅ **You SHOULD:**
+        - To get today's topic, subject, class teacher name use tool get_today_topic.
+        - The topic you have fetched in the first conversation, that topic should be persist through out the conversation, don't fetch the topic more then one
         - Explain key points simply using analogies and plain language.
         - Be conversational: speak directly to one student (use *you*, not *everyone*).
         - Give bullet-point recaps if asked for a summary.
@@ -42,7 +58,7 @@ def generate_root_agent_instruction(subject: str, klass: str, teacher: str, topi
 
         ❌ **You SHOULD NOT:**
         - Do not answer questions unrelated to the topic. Instead reply:
-          "This question is about a different topic. Please ask about today’s topic: {topic}."
+          "This question is about a different topic. Please ask about today’s topic."
         - Do not use complex academic terms without explanation.
         - Do not use complex words.
         - Do not give example first when student want explanation, always give explanation of the first 
@@ -59,19 +75,50 @@ def generate_root_agent_instruction(subject: str, klass: str, teacher: str, topi
         - Be friendly, warm, and conversational — use "you" instead of "everyone".
         - Assume they are a student who may need simplified explanations.
 
-        Today’s topic is: *{topic}*
         Only answer questions about today’s topic.
 
         If a question is off-topic, reply with:
-        "This question is about a different topic. Please ask about today’s topic: {topic}."
+        "This question is about a different topic. Please ask about today’s topic ."
 
 
         If a student asks for a recap, reply with a bullet-point summary of key concepts, using asterisks (not bold) for emphasis.
 
         At the end of every answer, show:
-        📚 *{topic}*  
-        📘 *{subject}*
+        📚 *topic*  
+        📘 *subject*
         """
+
+
+def get_today_topic():
+    # Decode the Base64 credentials
+    service_account_info = json.loads(base64.b64decode(os.getenv("SERVICE_ACCOUNT_B64")).decode('utf-8'))
+    
+    # Create credentials from the decoded JSON
+    creds = Credentials.from_service_account_info(
+        service_account_info,
+        scopes=[
+            'https://www.googleapis.com/auth/spreadsheets',
+            'https://www.googleapis.com/auth/drive'
+        ]
+    )
+    if not creds.valid:
+        creds.refresh(Request())
+    gc = gspread.authorize(creds)
+    sheet = gc.open_by_key(GOOGLE_SHEET_ID).worksheet(COURSE_SHEET)
+    today = datetime.now().strftime("%Y-%m-%d")
+    for row in sheet.get_all_records():
+        if str(row.get("Schedule Date")) == today:
+            return {
+                "topic": row.get("Topic"),
+                "class": row.get("Class"),
+                "teacher": row.get("Teacher"),
+                "subject": row.get("Subject"),
+                "summary": (
+                    f"Today's topic is *{row.get('Topic')}* for class *{row.get('Class')}*, "
+                    f"taught by *{row.get('Teacher')}*, subject *{row.get('Subject')}*."
+                )
+            }
+    return {"summary": "There is no topic scheduled for today."}
 
 
 # ───── Safety settings tell Gemini what to block outright ───────────
@@ -90,10 +137,23 @@ safety_settings = [
     ),
 ]
 
-ROOT_AGENT_INSTRUCTION = generate_root_agent_instruction(subject="Geography", teacher="Rahul Nair", klass="8", topic="Motions of the Earth")
+gen_cfg = GenerateContentConfig(
+    max_output_tokens=4096,
+    temperature=0.7,
+    top_p=0.9,
+    safety_settings=safety_settings,
+)
 
 root_agent = Agent(
     model=MODEL_NAME,
     name=AGENT_NAME,
-    instruction=ROOT_AGENT_INSTRUCTION,
+    instruction=root_agent_instruction,
+    tools=[get_today_topic],  # Register tool
+    generate_content_config=gen_cfg,
 )
+
+
+
+
+
+

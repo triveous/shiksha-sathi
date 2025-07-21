@@ -4,6 +4,7 @@ from typing import Any
 from google.adk.models.llm_response import LlmResponse
 from google.genai.types import Content, Part
 
+
 # Initialize toxicity guard (install torch first: pip install torch)
 toxicity_guard = Guard().use_many(
     ToxicLanguage(
